@@ -1,0 +1,1 @@
+chat_requests: dict[str, dict[str, str]] = {}
