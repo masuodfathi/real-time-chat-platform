@@ -1,4 +1,7 @@
-import type { ChatRequestResponse } from "../types/chat";
+import type { 
+  ChatRequestResponse,
+  ChatStreamEvent, 
+  } from "../types/chat";
 const API_BASE_URL = "http://localhost:5000/api";
 
 export async function checkApiHealth() {
@@ -31,4 +34,43 @@ export async function createChatRequest(message: string):Promise<ChatRequestResp
   }
 
   return data;
+}
+
+export function openChatStream(
+  requestId: string,
+  onEvent: (event: ChatStreamEvent) => void,
+  onError: (message: string) => void
+) {
+  const eventSource = new EventSource(
+    `${API_BASE_URL}/chat/stream/${requestId}`
+  );
+
+  eventSource.onmessage = (event) => {
+    try {
+      const parsedEvent = JSON.parse(
+        event.data
+      ) as ChatStreamEvent;
+
+      onEvent(parsedEvent);
+
+      if (
+        parsedEvent.type === "message.done" ||
+        parsedEvent.type === "error"
+      ) {
+        eventSource.close();
+      }
+    } catch {
+      onError("Unable to parse stream response.");
+
+      eventSource.close();
+    }
+  };
+
+  eventSource.onerror = () => {
+    onError("Streaming connection failed.");
+
+    eventSource.close();
+  };
+
+  return eventSource;
 }
