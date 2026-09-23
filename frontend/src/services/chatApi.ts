@@ -23,6 +23,7 @@ export async function createChatRequest(message: string):Promise<ChatRequestResp
       message,
     }),
   });
+
   const data = await response.json();
 
   if (!response.ok) {

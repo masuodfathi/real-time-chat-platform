@@ -23,4 +23,10 @@ def create_app():
             "service": "real-time-chat-api"
         })
 
+    @app.get("/api/version")
+    def get_version():
+        return jsonify({
+            "version": "1.0.0"
+        })
+
     return app
