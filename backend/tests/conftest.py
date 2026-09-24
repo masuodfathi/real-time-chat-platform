@@ -7,4 +7,14 @@ from app.services.request_store import chat_requests
 def app():
     flask_app = create_app()
 
-    flask_app.config.update
+    flask_app.config.update(
+        TESTING=True,
+    )
+
+    yield flask_app
+
+    chat_requests.clear()  # Clear the chat requests after each test
+
+@pytest.fixture
+def client(app):
+    return app.test_client()
