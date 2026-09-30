@@ -9,8 +9,8 @@ def test_create_chat_request(client):
     data = response.get_json()
 
     assert response.status_code == 201
-    assert "requestId" in data
-    assert isinstance(data["requestId"], str)
+    assert "request_id" in data
+    assert isinstance(data["request_id"], str)
 
 def test_empty_message_returns_400(client):
     response = client.post(
@@ -24,7 +24,7 @@ def test_empty_message_returns_400(client):
 
     assert response.status_code == 400
     assert data == {
-        "error": "Message cannot be empty."
+        "error": "Message is required"
 }
 
 def test_whitespace_message_returns_400(client):
