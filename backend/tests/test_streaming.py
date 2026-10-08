@@ -1,5 +1,7 @@
 import json
 from urllib import response
+# Import the in-memory request store to verify cleanup.
+from app.services.request_store import chat_requests
 
 def parse_sse_events(response):
     body = response.get_data(as_text=True)
@@ -61,3 +63,19 @@ def test_chat_stream(client, monkeypatch):
     assert "message.delta" in event_types
     #assert "ui.component" in event_types
     assert event_types[-1] == "message.done"
+
+    # Find the first UI component event in the stream.
+    ui_event = next(
+        event
+        for event in events
+        if event["type"] == "ui.component"
+    )
+
+    # Verify that the server generated an information card.
+    assert ui_event["data"]["type"] == "info_card"
+
+    # Verify that the information card contains the expected title.
+    assert ui_event["data"]["props"]["title"] == "Bella Italia"
+
+    # Verify that the completed request was removed from memory.
+    assert request_id not in chat_requests
