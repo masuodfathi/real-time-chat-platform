@@ -1,9 +1,10 @@
+from email.mime import message
 import json
 from time import sleep
 from uuid import uuid4
 
 from flask import Blueprint, Response, jsonify, request
-from app.services.chat_service import create_chat_request
+from app.services.chat_service import create_chat_request, build_ui_component
 
 from app.services.request_store import chat_requests
 
@@ -69,6 +70,19 @@ def stream_chat_response(request_id):
 
                 # Slow the stream slightly so we can see it happening.
                 sleep(0.2)
+
+            # Ask the service layer whether this message needs a dynamic UI component.
+            ui_component = build_ui_component(message)
+
+            # Send the component only when the service generated one.
+            if ui_component:
+                ui_event = {
+                    "type": "ui.component",
+                    "data": ui_component,
+                }
+
+            # Stream the UI component as another SSE event.
+            yield f"data: {json.dumps(ui_event)}\n\n"
 
             # Tell the client that the stream has finished successfully.
             done_event ={
