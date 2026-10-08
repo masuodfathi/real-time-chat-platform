@@ -91,6 +91,18 @@ def stream_chat_response(request_id):
 
             yield f"data: {json.dumps(done_event)}\n\n"
 
+        except Exception:
+            # Create a safe error event without exposing internal details.
+            error_event = {
+                "type": "error",
+                "data": {
+                    "message": "Streaming interrupted."
+                }
+            }
+
+            # Send the error event to the connected client.
+            yield f"data: {json.dumps(error_event)}\n\n"
+
         finally:
             # Remove the finished request from temporary memory.
             chat_requests.pop(request_id, None)
