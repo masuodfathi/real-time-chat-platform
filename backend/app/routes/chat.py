@@ -81,8 +81,8 @@ def stream_chat_response(request_id):
                     "data": ui_component,
                 }
 
-            # Stream the UI component as another SSE event.
-            yield f"data: {json.dumps(ui_event)}\n\n"
+                # Stream the UI component as another SSE event.
+                yield f"data: {json.dumps(ui_event)}\n\n"
 
             # Tell the client that the stream has finished successfully.
             done_event ={
