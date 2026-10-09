@@ -131,4 +131,47 @@ def test_stream_error_handling(client, monkeypatch):
 
     # Verify that the request was removed from memory.
     assert request_id not in chat_requests
-    
+
+
+def test_stream_without_ui_component(client, monkeypatch):
+    # Disable artificial delays during testing.
+    monkeypatch.setattr(
+        "app.routes.chat.sleep",
+        lambda _: None,
+    )
+
+    # Create a chat request that does not trigger a UI component.
+    response = client.post(
+        "/api/chat",
+        json = {
+            "message": "Hello, how are you?"
+        }
+    )
+
+    # Extract the request ID from the response.
+    request_id = response.get_json()["request_id"]
+
+    # Fetch the SSE stream for the request ID.
+    stream = client.get(f"/api/chat/stream/{request_id}")
+    events = parse_sse_events(stream)
+
+    # extract the event types from the streamed events.
+    event_types = [
+        event["type"]
+        for event in events
+    ]
+
+    # Verify that the stream does not contain a UI component event.
+    assert "ui.component" not in event_types
+
+    # Verify that the stream reports a successful completion.
+    assert event_types[-1] == "message.done"
+
+    # Verify that the request was removed from memory.
+    assert request_id not in chat_requests
+
+    # Verify that the stream contains at least one message.delta event.
+    assert "message.delta" in event_types
+
+    # Verify that the stream does not contain a UI component event.
+    assert "ui.component" not in event_types
