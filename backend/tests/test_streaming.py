@@ -79,3 +79,56 @@ def test_chat_stream(client, monkeypatch):
 
     # Verify that the completed request was removed from memory.
     assert request_id not in chat_requests
+
+
+def test_stream_error_handling(client, monkeypatch):
+    #Replace sleep() to prevent delays during testing.
+    monkeypatch.setattr(
+        "app.routes.chat.sleep",
+        lambda _: None,
+    )
+
+    # Simulate a failure in while sending the respond.
+    def fake_sleep_failure(seconds):
+        raise RuntimeError("Simulated streaming failure.")
+
+    #Replace sleep() with the fake failure function.
+    monkeypatch.setattr(
+        "app.routes.chat.sleep",
+        fake_sleep_failure,
+    )
+
+    # Create a valid char request.
+    create_response = client.post(
+        "/api/chat",
+        json={
+            "message": "Hello"
+        },
+    )
+
+    # Extract the request ID from the response.
+    request_id = create_response.get_json()["request_id"]
+
+    # Open the sse stream using the request ID.
+    response = client.get(
+        f"/api/chat/stream/{request_id}"
+    )
+
+    # Read and parse the streamed events.
+    events = parse_sse_events(response)
+
+    # Extract the event types.
+    event_types = [
+        event["type"]
+        for event in events
+    ]
+
+    # Verify that the stream reports an error.
+    assert "error" in event_types
+
+    # Verify that the stream does not report a successful completion.
+    assert "message.done" not in event_types
+
+    # Verify that the request was removed from memory.
+    assert request_id not in chat_requests
+    
