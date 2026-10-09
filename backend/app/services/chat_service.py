@@ -18,6 +18,7 @@ def build_ui_component(message: str):
     # Return an information card when the user asks about a restaurant.
     if "restaurant" in lower_message:
         return {
+            "id": str(uuid4()),
             "type": "info_card",
             "props": {
                 "title": "Bella Italia",
