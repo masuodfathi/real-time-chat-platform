@@ -1,5 +1,5 @@
 export interface ChatRequestResponse {
-  requestId: string;
+  request_id: string;
 }
 
 export type ServerUIComponent =
