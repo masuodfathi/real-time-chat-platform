@@ -60,7 +60,7 @@ def stream_chat_response(request_id):
             for word in response_text.split():
                 event = {
                     "type": "message.delta",
-                    "delta":{
+                    "data":{
                         "text": word + " ",
                     }
                 }
