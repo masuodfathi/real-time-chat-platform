@@ -7,27 +7,20 @@ import {
 
 import MessageList from "./components/MessageList";
 
-import type {
-  ChatMessage,
-  ChatStreamEvent,
-} from "./types/chat";
+import type { ChatMessage , ChatStreamEvent} from "./types/chat";
 
 
 function App() {
   const [input, setInput] = useState("");
 
-  const [messages, setMessages] =
-    useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const [error, setError] = useState("");
 
-  const [isSending, setIsSending] =
-    useState(false);
+  const [isSending, setIsSending] = useState(false);
 
 
-  async function handleSubmit(
-    event: React.FormEvent
-  ) {
+  async function handleSubmit( event: React.FormEvent) {
     event.preventDefault();
 
     const trimmedMessage = input.trim();
@@ -66,14 +59,10 @@ function App() {
     setInput("");
 
     try {
-      const result =
-        await createChatRequest(trimmedMessage);
+      const result = await createChatRequest(trimmedMessage);
 
-      openChatStream(
-        result.requestId,
-
-        (streamEvent) =>
-          handleStreamEvent(
+      openChatStream(result.request_id,(streamEvent) => handleStreamEvent
+          (
             assistantMessageId,
             streamEvent
           ),
@@ -95,10 +84,8 @@ function App() {
   }
 
 
-  function handleStreamEvent(
-    assistantMessageId: string,
-    event: ChatStreamEvent
-  ) {
+  function handleStreamEvent(assistantMessageId: string , event: ChatStreamEvent) {
+    console.log("Received SSE event:", event);
     if (event.type === "message.delta") {
       setMessages((currentMessages) =>
         currentMessages.map((message) => {

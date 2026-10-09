@@ -34,12 +34,12 @@ export async function createChatRequest(message: string):Promise<ChatRequestResp
 }
 
 export function openChatStream(
-  requestId: string,
+  request_id: string,
   onEvent: (event: ChatStreamEvent) => void,
   onError: (message: string) => void
 ) {
   const eventSource = new EventSource(
-    `${API_BASE_URL}/chat/stream/${requestId}`
+    `${API_BASE_URL}/chat/stream/${request_id}`
   );
 
   eventSource.onmessage = (event) => {
