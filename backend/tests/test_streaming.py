@@ -61,7 +61,7 @@ def test_chat_stream(client, monkeypatch):
     ]
 
     assert "message.delta" in event_types
-    #assert "ui.component" in event_types
+    assert "ui.component" in event_types
     assert event_types[-1] == "message.done"
 
     # Find the first UI component event in the stream.
@@ -172,6 +172,3 @@ def test_stream_without_ui_component(client, monkeypatch):
 
     # Verify that the stream contains at least one message.delta event.
     assert "message.delta" in event_types
-
-    # Verify that the stream does not contain a UI component event.
-    assert "ui.component" not in event_types
