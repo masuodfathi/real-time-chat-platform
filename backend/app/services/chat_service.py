@@ -10,16 +10,23 @@ def create_sse_event(event_type: str, **data):
 
 
 def stream_chat_response(message: str):
-    yield create_sse_event(
-        "message.delta",
-        text="You said: "
-    )
+    try:
+        yield create_sse_event(
+            "message.delta",
+            text="You said: "
+        )
 
-    yield create_sse_event(
-        "message.delta",
-        text=message
-    )
+        yield create_sse_event(
+            "message.delta",
+            text=message
+        )
+    
+        yield create_sse_event(
+            "message.done"
+        )
 
-    yield create_sse_event(
-        "message.done"
-    )
+    except Exception:
+        yield create_sse_event(
+            "error",
+            message="Unable to generate response."
+        )
