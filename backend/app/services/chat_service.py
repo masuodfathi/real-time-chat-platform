@@ -1,31 +1,25 @@
-from uuid import uuid4
+import json
 
-from app.services.request_store import chat_requests
-
-def create_chat_request(message: str):
-    request_id = str(uuid4())
-
-    chat_requests[request_id] = {
-        "message": message
+def create_sse_event(event_type: str, **data):
+    event = {
+        "type": event_type,
+        **data
     }
 
-    return request_id
+    return f"data: {json.dumps(event)}\n\n"
 
-def build_ui_component(message: str):
-    # Normalize the message so keyword checks are case-insensitive.
-    lower_message = message.lower()
 
-    # Return an information card when the user asks about a restaurant.
-    if "restaurant" in lower_message:
-        return {
-            "id": str(uuid4()),
-            "type": "info_card",
-            "props": {
-                "title": "Bella Italia",
-                "description": "Italian restaurant in Vancouver",
-                "rating": 4.7,
-            },
-        }
+def stream_chat_response(message: str):
+    yield create_sse_event(
+        "message.delta",
+        text="You said: "
+    )
 
-    # Return no UI component when no rule matches.
-    return None
+    yield create_sse_event(
+        "message.delta",
+        text=message
+    )
+
+    yield create_sse_event(
+        "message.done"
+    )
