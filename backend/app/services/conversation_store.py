@@ -26,7 +26,7 @@ def begin_turn(conversation_id: str | None):
 
         # Reserve this conversation and take a snapshot of its history.
         _active_conversations.add(conversation_id)
-        return conversation_id, [message.copy() for message in history]
+    return conversation_id, [message.copy() for message in history]
 
 
 def save_turn(conversation_id: str,user_message: str,assistant_message: str) -> None:
