@@ -1,33 +1,43 @@
 from threading import Lock
+from uuid import uuid4
 
-# Keep each conversation's messages in chronological order.
+
 _conversations: dict[str, list[dict[str, str]]] = {}
+_active_conversations: set[str] = set()
 _lock = Lock()
 
 
-def create_conversation(conversation_id: str) -> None:
+class ConversationBusy(Exception):
+    pass
+
+
+def begin_turn(conversation_id: str | None):
     with _lock:
-        _conversations[conversation_id] = []
+        if conversation_id is None:
+            conversation_id = str(uuid4())
+            _conversations[conversation_id] = []
+
+        history = _conversations.get(conversation_id)
+        if history is None:
+            raise KeyError(conversation_id)
+
+        if conversation_id in _active_conversations:
+            raise ConversationBusy(conversation_id)
+
+        # Reserve this conversation and take a snapshot of its history.
+        _active_conversations.add(conversation_id)
+        return conversation_id, [message.copy() for message in history]
 
 
-def get_history(conversation_id: str) -> list[dict[str, str]] | None:
+def save_turn(conversation_id: str,user_message: str,assistant_message: str) -> None:
     with _lock:
-        messages = _conversations.get(conversation_id)
-        if messages is None:
-            return None
-
-        # Return copies so callers cannot change stored messages.
-        return [message.copy() for message in messages]
-
-
-def save_turn(
-    conversation_id: str,
-    user_message: str,
-    assistant_message: str,
-) -> None:
-    with _lock:
-        # Append both messages after the response finishes successfully.
+        # Save the user message and the completed assistant response together.
         _conversations[conversation_id].extend([
             {"role": "user", "content": user_message},
             {"role": "assistant", "content": assistant_message},
         ])
+
+
+def end_turn(conversation_id: str) -> None:
+    with _lock:
+        _active_conversations.discard(conversation_id)

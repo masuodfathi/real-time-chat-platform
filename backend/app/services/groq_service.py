@@ -2,27 +2,23 @@ from groq import Groq
 
 
 def stream_model_response(
-    message: str,
+    messages: list[dict[str, str]],
     api_key: str,
-    model: str
+    model: str,
 ):
-    client = Groq(
-        api_key=api_key
-    )
+    client = Groq(api_key=api_key)
 
+    # Send the conversation history and the latest user message.
     stream = client.chat.completions.create(
         model=model,
-        messages=[
-            {
-                "role": "user",
-                "content": message
-            }
-        ],
-        stream=True
+        messages=messages,
+        stream=True,
     )
 
     for chunk in stream:
-        content = chunk.choices[0].delta.content
+        if not chunk.choices:
+            continue
 
+        content = chunk.choices[0].delta.content
         if content:
             yield content
