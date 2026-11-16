@@ -18,7 +18,15 @@ def chat():
         return jsonify({"error": "A JSON object is required."}), 400
 
     message = data.get("message")
-    if not isinstance(message, str) or not message.strip():
+    
+    # Validate the type before calling any string methods.
+    if not isinstance(message, str):
+        return jsonify({"error": "Message must be a string."}), 400
+
+    # Normalize the message before checking whether it is empty.
+    message = message.strip()
+
+    if not message:
         return jsonify({"error": "Message cannot be empty."}), 400
 
     conversation_id = data.get("conversationId")
