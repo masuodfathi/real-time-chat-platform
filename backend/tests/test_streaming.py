@@ -1,7 +1,4 @@
 import json
-from urllib import response
-# Import the in-memory request store to verify cleanup.
-from app.services.request_store import chat_requests
 
 def parse_sse_events(response):
     body = response.get_data(as_text=True)
@@ -22,153 +19,71 @@ def parse_sse_events(response):
 
     return events
 
-def test_unknown_request_404(client):
-    response =client.get(
-        "/api/chat/stream/not-real"
+def test_unknown_conversation_returns_404(client):
+    # Send a message with a conversation ID that does not exist.
+    response = client.post(
+        "/api/chat",
+        json={"conversationId": "not-real", "message": "Hello"},
     )
 
     assert response.status_code == 404
-
-
-def test_chat_stream(client, monkeypatch):
-    monkeypatch.setattr(
-        "app.routes.chat.sleep",
-        lambda _: None,
-    )
-
-    create_response = client.post(
-        "/api/chat",
-        json={
-            "message": "Show me an Italian restaurant"
-        },
-    )
-
-    request_id = create_response.get_json()["request_id"]
-
-    response = client.get(
-        f"/api/chat/stream/{request_id}",
-    )
-
-    assert response.status_code == 200
-    # Verify that the response uses the SSE MIME type.
-    assert response.mimetype == "text/event-stream"
-
-    events = parse_sse_events(response)
-
-    event_types = [
-        event["type"]
-        for event in events
-    ]
-
-    assert "message.delta" in event_types
-    assert "ui.component" in event_types
-    assert event_types[-1] == "message.done"
-
-    # Find the first UI component event in the stream.
-    ui_event = next(
-        event
-        for event in events
-        if event["type"] == "ui.component"
-    )
-
-    # Verify that the server generated an information card.
-    assert ui_event["data"]["type"] == "info_card"
-
-    # Verify that the information card contains the expected title.
-    assert ui_event["data"]["props"]["title"] == "Bella Italia"
-
-    # Verify that the completed request was removed from memory.
-    assert request_id not in chat_requests
-
-
-def test_stream_error_handling(client, monkeypatch):
-    #Replace sleep() to prevent delays during testing.
-    monkeypatch.setattr(
-        "app.routes.chat.sleep",
-        lambda _: None,
-    )
-
-    # Simulate a failure in while sending the respond.
-    def fake_sleep_failure(seconds):
-        raise RuntimeError("Simulated streaming failure.")
-
-    #Replace sleep() with the fake failure function.
-    monkeypatch.setattr(
-        "app.routes.chat.sleep",
-        fake_sleep_failure,
-    )
-
-    # Create a valid char request.
-    create_response = client.post(
-        "/api/chat",
-        json={
-            "message": "Hello"
-        },
-    )
-
-    # Extract the request ID from the response.
-    request_id = create_response.get_json()["request_id"]
-
-    # Open the sse stream using the request ID.
-    response = client.get(
-        f"/api/chat/stream/{request_id}"
-    )
-
-    # Read and parse the streamed events.
-    events = parse_sse_events(response)
-
-    # Extract the event types.
-    event_types = [
-        event["type"]
-        for event in events
-    ]
-
-    # Verify that the stream reports an error.
-    assert "error" in event_types
-
-    # Verify that the stream does not report a successful completion.
-    assert "message.done" not in event_types
-
-    # Verify that the request was removed from memory.
-    assert request_id not in chat_requests
+    assert response.get_json() == {"error": "Conversation not found."}
 
 
 def test_stream_without_ui_component(client, monkeypatch):
-    # Disable artificial delays during testing.
+    def fake_stream_model_response(*, messages, api_key, model):
+        # Return one predictable chunk for a regular chat message.
+        yield "Hello from the test"
+
     monkeypatch.setattr(
-        "app.routes.chat.sleep",
-        lambda _: None,
+        "app.services.chat_service.stream_model_response",
+        fake_stream_model_response,
     )
 
-    # Create a chat request that does not trigger a UI component.
     response = client.post(
         "/api/chat",
-        json = {
-            "message": "Hello, how are you?"
-        }
+        json={"message": "Hello, how are you?"},
+        buffered=True,
     )
 
-    # Extract the request ID from the response.
-    request_id = response.get_json()["request_id"]
+    assert response.status_code == 200
+    assert response.mimetype == "text/event-stream"
 
-    # Fetch the SSE stream for the request ID.
-    stream = client.get(f"/api/chat/stream/{request_id}")
-    events = parse_sse_events(stream)
+    events = parse_sse_events(response)
+    event_types = [event["type"] for event in events]
 
-    # extract the event types from the streamed events.
-    event_types = [
-        event["type"]
-        for event in events
+    assert event_types == [
+        "conversation.started",
+        "message.delta",
+        "message.done",
     ]
+    assert events[1]["text"] == "Hello from the test"
 
-    # Verify that the stream does not contain a UI component event.
-    assert "ui.component" not in event_types
 
-    # Verify that the stream reports a successful completion.
-    assert event_types[-1] == "message.done"
+def test_chat_stream_reports_provider_failure(client, monkeypatch):
+    def fake_stream_model_response(*, messages, api_key, model):
+        # Send one chunk before simulating a provider failure.
+        yield "Partial answer"
+        raise RuntimeError("Simulated Groq stream failure")
 
-    # Verify that the request was removed from memory.
-    assert request_id not in chat_requests
+    # Replace the function used by the chat service for this test.
+    monkeypatch.setattr(
+        "app.services.chat_service.stream_model_response",
+        fake_stream_model_response,
+    )
 
-    # Verify that the stream contains at least one message.delta event.
-    assert "message.delta" in event_types
+    # Send a request through Flask and read the stream to completion.
+    response = client.post(
+        "/api/chat",
+        json={"message": "Hello"},
+        buffered=True,
+    )
+
+    assert response.status_code == 200
+    assert response.mimetype == "text/event-stream"
+    events = parse_sse_events(response)
+
+    # Verify the exact event order and the partial text.
+    event_types = [event["type"] for event in events]
+    assert event_types == ["conversation.started", "message.delta", "error"]
+    assert events[1]["text"] == "Partial answer"
