@@ -1,9 +1,11 @@
 import json
-import traceback
+import logging
 
 from app.services.conversation_store import save_turn
 from app.services.groq_service import stream_model_response
 
+# Use a logger named after this module.
+logger = logging.getLogger(__name__)
 
 def create_sse_event(event_type: str, **data):
     event = {"type": event_type, **data}
@@ -18,7 +20,7 @@ def stream_chat_response(message: str, conversation_id: str, history: list[dict[
 
     try:
         yield create_sse_event("conversation.started", conversationId=conversation_id)
-
+    
         restaurant = None
 
         if message.strip().casefold() == "show me an italian restaurant":
@@ -58,7 +60,11 @@ def stream_chat_response(message: str, conversation_id: str, history: list[dict[
         yield create_sse_event("message.done")
 
     except Exception:
-        traceback.print_exc()
+        # Record the failure with the conversation ID and traceback.
+        logger.exception(
+            "Chat streaming failed for conversation_id=%s",
+            conversation_id,
+        )
         yield create_sse_event(
             "error",
             message="Unable to generate response.",
