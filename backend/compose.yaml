@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: realtime_chat
+      POSTGRES_USER: chat_dev
+      POSTGRES_PASSWORD: ${CHAT_DB_PASSWORD:?Set CHAT_DB_PASSWORD in backend/.env}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
