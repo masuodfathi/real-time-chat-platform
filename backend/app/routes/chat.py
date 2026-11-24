@@ -7,6 +7,7 @@ from app.services.conversation_store import (
     end_turn,
 )
 
+from uuid import UUID
 
 chat_bp = Blueprint("chat", __name__)
 
@@ -35,7 +36,10 @@ def chat():
         if not isinstance(conversation_id, str) or not conversation_id.strip():
             return jsonify({"error": "Invalid conversation ID."}), 400
         
-        conversation_id = conversation_id.strip()
+        try:
+            conversation_id = str(UUID(conversation_id.strip()))
+        except ValueError:
+            return jsonify({"error": "Conversation not found."}), 404
 
     api_key = current_app.config["GROQ_API_KEY"]
     model = current_app.config["GROQ_MODEL"]

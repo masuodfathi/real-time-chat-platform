@@ -1,8 +1,8 @@
 import json
 import logging
 
-from app.services.conversation_store import save_turn
 from app.services.groq_service import stream_model_response
+from app.services.message_repository import save_turn
 
 # Use a logger named after this module.
 logger = logging.getLogger(__name__)

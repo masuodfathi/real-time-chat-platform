@@ -19,3 +19,21 @@ def load_conversation_history(conversation_id):
         {"role": role, "content": content}
         for role, content in rows
     ]
+
+def save_turn(conversation_id: str, user_message: str, assistant_message: str) -> None:
+    # Save both messages in one transaction.
+    with connect_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO messages (conversation_id, role, content)
+            VALUES (%s, 'user', %s)
+            """,
+            (conversation_id, user_message),
+        )
+        conn.execute(
+            """
+            INSERT INTO messages (conversation_id, role, content)
+            VALUES (%s, 'assistant', %s)
+            """,
+            (conversation_id, assistant_message),
+        )

@@ -1,8 +1,12 @@
 from threading import Lock
-from uuid import uuid4
+
+from app.services.conversation_repository import (
+    conversation_exists,
+    create_conversation,
+)
+from app.services.message_repository import load_conversation_history
 
 
-_conversations: dict[str, list[dict[str, str]]] = {}
 _active_conversations: set[str] = set()
 _lock = Lock()
 
@@ -12,30 +16,26 @@ class ConversationBusy(Exception):
 
 
 def begin_turn(conversation_id: str | None):
+    if conversation_id is None:
+        conversation_id = create_conversation()
+    elif not conversation_exists(conversation_id):
+        raise KeyError(conversation_id)
+
+    # Check and reserve the conversation under the same lock.
     with _lock:
-        if conversation_id is None:
-            conversation_id = str(uuid4())
-            _conversations[conversation_id] = []
-
-        history = _conversations.get(conversation_id)
-        if history is None:
-            raise KeyError(conversation_id)
-
         if conversation_id in _active_conversations:
             raise ConversationBusy(conversation_id)
 
-        # Reserve this conversation and take a snapshot of its history.
         _active_conversations.add(conversation_id)
-    return conversation_id, [message.copy() for message in history]
 
+    # Release the reservation if loading history fails before streaming starts.
+    try:
+        history = load_conversation_history(conversation_id)
+    except Exception:
+        end_turn(conversation_id)
+        raise
 
-def save_turn(conversation_id: str,user_message: str,assistant_message: str) -> None:
-    with _lock:
-        # Save the user message and the completed assistant response together.
-        _conversations[conversation_id].extend([
-            {"role": "user", "content": user_message},
-            {"role": "assistant", "content": assistant_message},
-        ])
+    return conversation_id, history
 
 
 def end_turn(conversation_id: str) -> None:
