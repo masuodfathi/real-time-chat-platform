@@ -47,8 +47,14 @@ def stream_chat_response(message: str, conversation_id: str, history: list[dict[
 
             assistant_message = "".join(assistant_chunks)
 
+
+        # Reject an empty answer before starting the write transaction.
+        if not isinstance(assistant_message, str) or not assistant_message.strip():
+            raise ValueError("The assistant response contained no text.")
+
         # Store the same text that was sent to the client.
         save_turn(conversation_id, message, assistant_message)
+
 
         if restaurant is not None:
             yield create_sse_event(
@@ -67,5 +73,5 @@ def stream_chat_response(message: str, conversation_id: str, history: list[dict[
         )
         yield create_sse_event(
             "error",
-            message="Unable to generate response.",
+            message="Unable to complete the response. Please try again.",
         )
